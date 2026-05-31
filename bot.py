@@ -8,7 +8,7 @@ user_video = {}
 
 @bot.message_handler(commands=['start'])
 def start(msg):
-    bot.send_message(msg.chat.id, "🎬 أهلاً دراكون. أرسل الفيديو ثم اختر القالب (1 أو 2 أو 3)")
+    bot.send_message(msg.chat.id, "🎬 أهلاً دراكون. أرسل الفيديو ثم اختر القالب (1، 2، أو 3)")
 
 @bot.message_handler(content_types=['video'])
 def get_video(msg):
@@ -34,15 +34,16 @@ def edit_video(msg):
         "3": 'drawtext=text=SHORTS:fontsize=55:fontcolor=red:x=70:y=70,eq=contrast=1.2'
     }
 
-    # سطر المعالجة المباشر
+    # سطر المعالجة هنا
     cmd = f'ffmpeg -y -i input.mp4 -vf "{filters[choice]}" -preset ultrafast output.mp4'
     
     try:
+        # تنفيذ الأمر باستخدام المسار الكامل إذا لزم الأمر
         subprocess.run(cmd, shell=True, check=True)
         with open("output.mp4", "rb") as video:
             bot.send_video(msg.chat.id, video, caption="✅ تم التصميم بنجاح!")
-    except Exception as e:
-        bot.send_message(msg.chat.id, f"خطأ FFmpeg (127): البرنامج غير مثبت أو غير موجود في المسار.")
+    except subprocess.CalledProcessError:
+        bot.send_message(msg.chat.id, "❌ خطأ (127): نظام Railway لم يجد FFmpeg. جرب تغيير الاستضافة.")
     finally:
         if os.path.exists("input.mp4"): os.remove("input.mp4")
         if os.path.exists("output.mp4"): os.remove("output.mp4")
