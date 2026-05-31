@@ -1,7 +1,7 @@
 import telebot
 import os
 
-TOKEN = "YOUR_TOKEN_HERE"
+TOKEN = "8752413289:AAH0Y3lEUN5VdBHTGPQZq1V_0jyvTw8UkSg"
 bot = telebot.TeleBot(TOKEN)
 
 user_video = {}
