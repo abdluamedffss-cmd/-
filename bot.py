@@ -1,52 +1,78 @@
+import telebot
 import os
-from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters
-)
 
-from config import TOKEN
-from video_editor import process_video
+TOKEN = "YOUR_TOKEN_HERE"
+bot = telebot.TeleBot(TOKEN)
 
-os.makedirs("downloads", exist_ok=True)
-os.makedirs("output", exist_ok=True)
+user_video = {}
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "أرسل فيديو ليتم تعديله."
+# /start
+@bot.message_handler(commands=['start'])
+def start(msg):
+    bot.send_message(
+        msg.chat.id,
+        "🎬 أهلاً بك في بوت التصميم\n\n"
+        "📩 أرسل فيديو ثم اختر قالب:\n"
+        "1 - TikTok Style 🔥\n"
+        "2 - Cinematic 🎥\n"
+        "3 - Shorts ⚡"
     )
 
-async def receive_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    video = update.message.video
+# استقبال الفيديو
+@bot.message_handler(content_types=['video'])
+def get_video(msg):
+    file_info = bot.get_file(msg.video.file_id)
+    downloaded = bot.download_file(file_info.file_path)
 
-    file = await context.bot.get_file(video.file_id)
+    with open("input.mp4", "wb") as f:
+        f.write(downloaded)
 
-    input_path = f"downloads/{video.file_id}.mp4"
-    output_path = f"output/{video.file_id}.mp4"
+    user_video[msg.chat.id] = "ready"
 
-    await file.download_to_drive(input_path)
+    bot.send_message(msg.chat.id, "🎨 اختر القالب الآن:\n1 / 2 / 3")
 
-    process_video(input_path, output_path)
+# اختيار القالب
+@bot.message_handler(func=lambda m: True)
+def edit_video(msg):
+    if msg.chat.id not in user_video:
+        return
 
-    await update.message.reply_video(
-        video=open(output_path, "rb"),
-        caption="تمت معالجة الفيديو."
-    )
+    choice = msg.text
 
-def main():
-    app = Application.builder().token(TOKEN).build()
+    bot.send_message(msg.chat.id, "⏳ جاري تصميم الفيديو...")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(
-        MessageHandler(filters.VIDEO, receive_video)
-    )
+    # 🎬 قالب 1 - TikTok
+    if choice == "1":
+        cmd = (
+            'ffmpeg -y -i input.mp4 '
+            '-vf "drawtext=text=TikTok STYLE🔥:fontsize=50:fontcolor=white:x=50:y=50,'
+            'eq=contrast=1.3:brightness=0.05,zoompan=z=1.2" '
+            '-preset fast output.mp4'
+        )
 
-    print("Bot Started")
+    # 🎥 قالب 2 - Cinematic
+    elif choice == "2":
+        cmd = (
+            'ffmpeg -y -i input.mp4 '
+            '-vf "drawtext=text=CINEMATIC🎬:fontsize=60:fontcolor=yellow:x=100:y=100,'
+            'eq=contrast=1.4:brightness=-0.05" '
+            '-preset fast output.mp4'
+        )
 
-    app.run_polling()
+    # ⚡ قالب 3 - Shorts
+    else:
+        cmd = (
+            'ffmpeg -y -i input.mp4 '
+            '-vf "drawtext=text=SHORTS⚡:fontsize=55:fontcolor=red:x=70:y=70,'
+            'eq=contrast=1.2:brightness=0.1" '
+            '-preset fast output.mp4'
+        )
 
-if __name__ == "__main__":
-    main()
+    os.system(cmd)
+
+    bot.send_video(msg.chat.id, open("output.mp4", "rb"), caption="✅ تم تصميم الفيديو")
+
+    del user_video[msg.chat.id]
+
+
+bot.polling()
